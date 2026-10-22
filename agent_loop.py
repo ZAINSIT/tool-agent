@@ -4,11 +4,20 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 from duckduckgo_search import DDGS
+import time
 
 load_dotenv()
 
 # Initialize client
-client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+import streamlit as st
+
+def get_api_key():
+    try:
+        return st.secrets["GOOGLE_API_KEY"]
+    except Exception:
+        return os.getenv("GOOGLE_API_KEY")
+
+client = genai.Client(api_key=get_api_key())
 MODEL = "gemini-3.1-flash-lite"# Free-tier friendly [citation:4][citation:9]
 
 # --- Tool 1: Document Retriever (mock) ---
@@ -94,11 +103,16 @@ def run_agent(user_input: str, max_iterations: int = 5, logger=print):
     for iteration in range(max_iterations):
         logger(f"🤔 Iteration {iteration + 1}: Calling model...")
 
-        response = client.models.generate_content(
-            model=MODEL,
-            contents=history,
-            config=config,
-        )
+        try:
+            response = client.models.generate_content(
+                model=MODEL,
+                contents=history,
+                config=config,
+            )
+        except Exception as e:
+            logger(f"⚠️ Model error: {str(e)}")
+            logger("The model is busy or rate-limited. Please try again in a moment.")
+            return None
 
         # Check if the model wants to call a function
         if response.function_calls:
@@ -136,6 +150,7 @@ def run_agent(user_input: str, max_iterations: int = 5, logger=print):
                 )
             )
             # Continue loop to let model process the result
+            time.sleep(3) # Throttle to stay under free-tier rate limits
             continue
 
         else:
