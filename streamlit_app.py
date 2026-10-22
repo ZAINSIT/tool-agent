@@ -7,6 +7,6 @@ st.caption("Ask a question. The agent decides whether to search local docs or th
 query = st.text_input("Your question:")
 if st.button("Run") and query:
     with st.spinner("Agent thinking..."):
-        answer = run_agent(query)
+        answer = run_agent(query, logger=st.write)
     st.markdown("### Answer")
     st.write(answer)

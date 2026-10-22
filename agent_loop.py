@@ -81,9 +81,10 @@ tools = types.Tool(
 config = types.GenerateContentConfig(tools=[tools])
 
 # --- The Agent Loop ---
-def run_agent(user_input: str, max_iterations: int = 5):
-    print(f"\n👤 User: {user_input}")
-    print("-" * 50)
+
+def run_agent(user_input: str, max_iterations: int = 5, logger=print):
+    logger(f"\n👤 User: {user_input}")
+    logger("-" * 50)
 
     # Initialize conversation history
     history = [
@@ -91,7 +92,7 @@ def run_agent(user_input: str, max_iterations: int = 5):
     ]
 
     for iteration in range(max_iterations):
-        print(f"🤔 Iteration {iteration + 1}: Calling model...")
+        logger(f"🤔 Iteration {iteration + 1}: Calling model...")
 
         response = client.models.generate_content(
             model=MODEL,
@@ -105,19 +106,21 @@ def run_agent(user_input: str, max_iterations: int = 5):
             name = function_call.name
             args = function_call.args
 
-            print(f"🔧 Model chose tool: {name}({args})")
+            logger(f"🔧 Model chose tool: {name}({args})")
 
             # Execute the tool with error handling
             try:
                 if name in TOOL_MAP:
+                    args = dict(function_call.args)
                     result = TOOL_MAP[name](**args)
-                    print(f"📄 Tool result: {result[:150]}...")
+                    result = TOOL_MAP[name](**args)
+                    logger(f"📄 Tool result: {result[:150]}...")
                 else:
                     result = f"Error: Unknown tool '{name}'"
             except Exception as e:
                 # Feed the error back to the model so it can recover [citation:2]
                 result = f"Tool error in {name}: {str(e)}"
-                print(f"❌ Tool error: {str(e)}")
+                logger(f"❌ Tool error in {name}: {str(e)}")
 
             # Append the model's function call and the tool result to history
             history.append(response.candidates[0].content)
@@ -137,11 +140,11 @@ def run_agent(user_input: str, max_iterations: int = 5):
 
         else:
             # No function call, model produced final answer
-            print(f"✅ Final answer: {response.text}")
-            print("-" * 50)
+            logger(f"✅ Final answer: {response.text}")
+            logger("-" * 50)
             return response.text
 
-    print("⚠️ Max iterations reached without final answer.")
+    logger("⚠️ Max iterations reached without final answer.")
     return None
 
 
